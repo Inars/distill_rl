@@ -1,0 +1,6 @@
+# @package _global_
+# Classic supervised fine-tuning: cross-entropy on gold labels. No teacher.
+algo: supervised
+method_name: sft
+distill:
+  enabled: false

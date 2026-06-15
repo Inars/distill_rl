@@ -1,0 +1,45 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments / secrets
+.env
+.venv
+env/
+venv/
+
+# uv lock (matches the team's convention; regenerate locally with `uv lock`)
+uv.lock
+
+# Experiment tracking & run outputs
+wandb/
+outputs/
+multirun/
+artifacts/
+*.pt
+*.ckpt
+
+# Slurm job logs
+slurm/*.out
+slurm/*.err
+slurm/.submitit/
+
+# Caches / test
+.pytest_cache/
+.ruff_cache/
+.cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# OS / FUSE / sshfs junk
+.DS_Store
+._*
+.fuse_hidden*
+
+# IDEs
+.idea/
+.vscode/
+.claude/

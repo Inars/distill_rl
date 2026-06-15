@@ -1,0 +1,4 @@
+name: adamw
+lr: 2.0e-5
+weight_decay: 0.01
+warmup_ratio: 0.06      # fraction of total optimizer steps used for linear warmup

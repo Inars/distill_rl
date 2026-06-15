@@ -1,0 +1,38 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "distill_rl"
+version = "0.1.0"
+description = "Distillation inside the GRPO algorithm: roberta-base on MNLI (SFT / GRPO / KD / altered-GRPO+KD)"
+requires-python = ">=3.10"
+dependencies = [
+    "torch",
+    "transformers",
+    "datasets",
+    "accelerate",
+    "hydra-core>=1.3.2",
+    "hydra-submitit-launcher>=1.2.0",
+    "wandb",
+    "trl",          # reference for GRPO loss math; our GRPO loop is self-contained
+    "numpy",
+    "tqdm",
+    "python-dotenv",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["distill_rl"]
+
+[tool.isort]
+profile = "black"
+line_length = 90
+
+[tool.ruff]
+line-length = 90
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]

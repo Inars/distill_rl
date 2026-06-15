@@ -1,0 +1,14 @@
+dataset_name: SetFit/mnli
+splits:
+  train: train
+  val: validation
+  test: test
+text1_field: text1      # premise
+text2_field: text2      # hypothesis
+label_field: label      # already canonical: 0=entailment, 1=neutral, 2=contradiction
+max_seq_len: 128
+train_batch_size: 16
+eval_batch_size: 32
+num_workers: 4
+train_limit: null       # cap #train examples (null = full split); for smoke runs
+val_limit: null         # cap #val examples (null = full split)

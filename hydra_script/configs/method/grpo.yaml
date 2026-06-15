@@ -1,0 +1,9 @@
+# @package _global_
+# Plain GRPO: reference = frozen snapshot of the student. No distillation.
+algo: grpo
+method_name: grpo
+distill:
+  enabled: false
+grpo:
+  reference: student
+  kd_aux: false

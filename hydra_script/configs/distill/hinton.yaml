@@ -1,0 +1,4 @@
+enabled: true           # overridden per method
+temperature: 2.0
+alpha: 0.5              # KD weight: total = alpha*soft + (1-alpha)*hard (KD run)
+lambda_kd: 1.0         # weight of the soft KD auxiliary term in GRPO+distill

@@ -1,0 +1,9 @@
+group_size: 8           # G actions sampled per example
+beta: 0.04              # KL penalty weight
+clip_eps: 0.2           # PPO ratio clip
+kl_estimator: exact     # exact (closed-form categorical KL) | k3 (TRL sample estimator)
+scale_rewards: true     # (r - mean)/(std + eps) advantage normalization
+reward_correct: 1.0
+reward_wrong: 0.0
+reference: student       # student (frozen snapshot) | teacher (roberta-large-mnli) -- set by method
+kd_aux: false           # add soft KD aux loss from the teacher -- set by method

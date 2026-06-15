@@ -1,0 +1,5 @@
+model_name: FacebookAI/roberta-large-mnli
+dtype: float32
+device: cuda
+# HF checkpoint order; remapped to canonical (entailment, neutral, contradiction).
+native_label_order: [contradiction, neutral, entailment]

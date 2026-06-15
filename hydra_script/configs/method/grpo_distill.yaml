@@ -1,0 +1,10 @@
+# @package _global_
+# Altered GRPO: KL/reward-penalty reference = roberta-large-mnli (the teacher),
+# PLUS a soft logit-KD auxiliary loss from the same teacher.
+algo: grpo
+method_name: grpo_distill
+distill:
+  enabled: true
+grpo:
+  reference: teacher
+  kd_aux: true

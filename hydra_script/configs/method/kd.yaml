@@ -1,0 +1,6 @@
+# @package _global_
+# Supervised distillation: Hinton logit KD from roberta-large-mnli (soft + hard).
+algo: supervised
+method_name: kd
+distill:
+  enabled: true

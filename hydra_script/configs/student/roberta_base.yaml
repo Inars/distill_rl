@@ -1,0 +1,4 @@
+model_name: FacebookAI/roberta-base
+num_labels: 3
+classifier_dropout: 0.1
+device: cuda            # get_device() falls back to CPU when no GPU (e.g. login node)
