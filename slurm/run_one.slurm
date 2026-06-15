@@ -14,8 +14,9 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
 #SBATCH --time=12:00:00
-# Same node set as experimental_grow/distill_nli: V100 + A100 (ampere) + H100 (hopper).
-#SBATCH --exclude=margpu002,margpu003,margpu017,margpu018,margpu019,margpu020,margpu021,margpu022,margpu023,margpu024,margpu025,margpu026,margpu027,margpu028,margpu029
+# A100/A40 (ampere) + H100 (hopper) only. V100 (margpu004) excluded too: torch
+# 2.12+cu130 dropped Volta sm_70 kernels, so V100 nodes crash.
+#SBATCH --exclude=margpu002,margpu003,margpu004,margpu017,margpu018,margpu019,margpu020,margpu021,margpu022,margpu023,margpu024,margpu025,margpu026,margpu027,margpu028,margpu029
 
 set -uo pipefail
 cd /home/tau/elsaad/distill_rl
@@ -29,5 +30,6 @@ echo "[run_one] method=$METHOD overrides=$* node=$(hostname)"
 nvidia-smi -L || true
 
 uv run python hydra_script/train.py method="$METHOD" "$@"
-
-echo "[run_one] method=$METHOD DONE (exit=$?)"
+rc=$?
+echo "[run_one] method=$METHOD DONE (exit=$rc)"
+exit $rc
