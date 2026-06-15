@@ -19,7 +19,7 @@ from distill_rl.distillation.losses import soft_kd_loss
 from distill_rl.grpo.advantage import correctness_reward, group_relative_advantage
 from distill_rl.grpo.loss import grpo_loss
 from distill_rl.grpo.sampling import gather_logprobs, policy_entropy, sample_actions
-from distill_rl.models.reference import Reference
+from distill_rl.models.reference import Reference, TeacherReference
 from distill_rl.models.teacher import FrozenTeacher
 from distill_rl.training.supervised import _eval_and_track
 from distill_rl.utils.wandb_logger import WandbLogger
@@ -92,7 +92,13 @@ def train_grpo(
             metrics = gm.as_dict()
 
             if kd_on:
-                t_logits = kd_teacher(ids, mask)                          # (B, 3), no grad
+                # In grpo_distill the KD teacher IS the GRPO reference, so ref_logits
+                # already are its canonical logits -- reuse them instead of a second
+                # (identical) roberta-large forward per step.
+                if isinstance(reference, TeacherReference) and reference.teacher is kd_teacher:
+                    t_logits = ref_logits
+                else:
+                    t_logits = kd_teacher(ids, mask)                      # (B, 3), no grad
                 kd = soft_kd_loss(logits, t_logits, temperature=kd_temperature)
                 loss = loss + lambda_kd * kd
                 metrics["kd"] = float(kd)

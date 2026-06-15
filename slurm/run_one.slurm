@@ -13,7 +13,9 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G
-#SBATCH --time=08:00:00
+#SBATCH --time=12:00:00
+# Same node set as experimental_grow/distill_nli: V100 + A100 (ampere) + H100 (hopper).
+#SBATCH --exclude=margpu002,margpu003,margpu017,margpu018,margpu019,margpu020,margpu021,margpu022,margpu023,margpu024,margpu025,margpu026,margpu027,margpu028,margpu029
 
 set -uo pipefail
 cd /home/tau/elsaad/distill_rl
