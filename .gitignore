@@ -43,3 +43,7 @@ coverage.xml
 .idea/
 .vscode/
 .claude/
+
+# Planning / design docs (not code) -- README.md stays tracked as the user-facing doc.
+PLAN.md
+PLAN_KDRL_TRRD.md
