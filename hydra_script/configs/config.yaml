@@ -6,8 +6,10 @@ defaults:
   - optimizer: adamw
   - distill: hinton
   - grpo: default
+  - kdrl: default
+  - trrd: default
   - wandb: default
-  - method: sft        # LAST so a method preset can override distill/grpo via @package _global_
+  - method: sft        # LAST so a method preset can override distill/grpo/kdrl/trrd via @package _global_
 
 seed: 42
 epochs: 3

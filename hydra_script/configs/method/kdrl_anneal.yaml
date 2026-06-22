@@ -1,0 +1,18 @@
+# @package _global_
+# KDRL with the paper's best-performing schedule: a linearly annealed KD coefficient
+# (beta_init=5e-3 -> beta_min=1e-3), shifting from strong early imitation to reward-driven
+# optimization. Everything else matches the `kdrl` preset.
+algo: grpo
+method_name: kdrl_anneal
+distill:
+  enabled: false
+grpo:
+  objective: grpo
+  reference: student
+  kd_aux: false
+  beta: 0.0
+kdrl:
+  enabled: true
+  estimator: k2
+  schedule: anneal
+  masking: none

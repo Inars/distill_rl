@@ -1,5 +1,6 @@
 group_size: 8           # G actions sampled per example
-beta: 0.04              # KL penalty weight
+objective: grpo         # grpo | trrd -- 'trrd' swaps in the mixture-anchored ratio (set by method)
+beta: 0.04              # ref-KL penalty weight (also the TRRD ref-KL weight; 0 disables it)
 clip_eps: 0.2           # PPO ratio clip
 kl_estimator: exact     # exact (closed-form categorical KL) | k3 (TRL sample estimator)
 scale_rewards: true     # (r - mean)/(std + eps) advantage normalization

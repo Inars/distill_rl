@@ -2,7 +2,7 @@
 
 Experiments on **how distillation fits into the GRPO algorithm**, on MNLI.
 
-A `roberta-base` student is trained four ways and compared:
+A `roberta-base` student is trained several ways and compared:
 
 | `method=`      | algorithm | teacher role |
 |----------------|-----------|--------------|
@@ -10,13 +10,18 @@ A `roberta-base` student is trained four ways and compared:
 | `kd`           | supervised Hinton **logit KD** | `roberta-large-mnli` (soft targets) |
 | `grpo`         | single-step **bandit GRPO** | reference = frozen student snapshot |
 | `grpo_distill` | **altered GRPO** + soft KD aux | `roberta-large-mnli` as KL/penalty **reference** *and* KD teacher |
+| `kdrl`         | **GRPO + reverse-KL (k2) distillation** (joint loss) | `roberta-large-mnli` as on-policy KD-RKL teacher (ref-KL off) |
+| `kdrl_anneal`  | `kdrl` with an annealed KD coefficient (β: 5e-3 → 1e-3) | same as `kdrl` |
+| `trrd`         | **GRPO with a mixture-anchored ratio** (RLAD) | `roberta-large-mnli` folded into the trust-region ratio |
 
 - **Student:** `FacebookAI/roberta-base` + a fresh 3-way head.
 - **Teacher:** `FacebookAI/roberta-large-mnli` (frozen, logits permuted to canonical order).
 - **Data:** `SetFit/mnli` (label order `0=entailment, 1=neutral, 2=contradiction`).
 - **Tracking:** Weights & Biases → `TAU-Frugal/distillation-rl`.
 
-See [PLAN.md](PLAN.md) for the design rationale and the exact GRPO math.
+The base methods follow the GRPO math below; `kdrl` and `trrd` implement
+[KDRL](https://arxiv.org/abs/2506.02208) and [RLAD / TRRD](https://arxiv.org/abs/2602.22495)
+respectively (one-paragraph summaries follow).
 
 ## GRPO, in one paragraph
 
@@ -28,6 +33,25 @@ mirrors TRL's `GRPOTrainer`; the only difference is the "sequence" is a single
 label token. In `grpo` the reference is a frozen snapshot of the student; in
 `grpo_distill` it is the teacher (`roberta-large-mnli`), and a soft KD term from
 the teacher is added on top.
+
+## KDRL and TRRD, in one paragraph each
+
+**`kdrl`** ([Xu et al.](https://arxiv.org/abs/2506.02208)) keeps the GRPO policy update
+but adds an auxiliary **reverse-KL distillation** term toward the teacher, estimated on
+the on-policy sampled actions with the unbiased **k2** estimator (`½·R²`,
+`R = log π_T − log π_θ`), combined via a joint loss `L = L_GRPO + β·D_KL(π_θ‖π_T)`.
+Faithful to the paper, the GRPO policy-anchoring KL is off (`grpo.beta=0`).
+`kdrl_anneal` linearly decays `β` (5e-3 → 1e-3); optional reward-guided masking
+(`kdrl.masking`) drops the KD term on already-correct samples. This is a *reverse* KL,
+unlike `grpo_distill`'s forward/Hinton KD.
+
+**`trrd`** ([Zhang et al.](https://arxiv.org/abs/2602.22495)) instead leaves the loss
+shape alone and replaces the GRPO importance **ratio** with one anchored on a geometric
+mixture of the old student policy and the teacher,
+`r = π_θ / (π_θ_old^α · π_T^{1−α})`, then applies the usual PPO clip (plus an Appendix-B
+clamp on `log(π_θ/π_T)`). There is no separate KD term — distillation is folded into the
+trust region, active only when the advantage supports it. `α=1` recovers plain GRPO,
+`α=0` is DPO-like; the Eq. 4 reference-KL to a frozen student snapshot is kept (`grpo.beta`).
 
 ## Setup
 
@@ -48,6 +72,9 @@ uv run python hydra_script/train.py method=sft
 uv run python hydra_script/train.py method=kd
 uv run python hydra_script/train.py method=grpo
 uv run python hydra_script/train.py method=grpo_distill
+uv run python hydra_script/train.py method=kdrl
+uv run python hydra_script/train.py method=kdrl_anneal
+uv run python hydra_script/train.py method=trrd
 ```
 
 Quick smoke (no GPU, no W&B):
@@ -59,9 +86,18 @@ uv run python hydra_script/train.py method=grpo_distill \
 
 On the cluster (SLURM):
 ```bash
-sbatch slurm/run_all.slurm                 # all 4 experiments, one GPU node each (array 0-3)
-sbatch slurm/run_one.slurm grpo_distill    # a single experiment
-sbatch slurm/run_one.slurm grpo grpo.beta=0.02 grpo.group_size=16   # with overrides
+# Default: the two new methods (kdrl, trrd), one GPU node each (array 0-1).
+sbatch slurm/run_all.slurm
+
+# Reproduce every method (override METHODS + the array range):
+sbatch --array=0-6 \
+       --export=ALL,METHODS="sft kd grpo grpo_distill kdrl kdrl_anneal trrd" \
+       slurm/run_all.slurm
+
+# A single experiment, optionally with Hydra overrides:
+sbatch slurm/run_one.slurm trrd
+sbatch slurm/run_one.slurm kdrl kdrl.estimator=k3 kdrl.masking=response
+sbatch slurm/run_one.slurm grpo grpo.beta=0.02 grpo.group_size=16
 ```
 
 ## Common overrides
@@ -77,6 +113,12 @@ sbatch slurm/run_one.slurm grpo grpo.beta=0.02 grpo.group_size=16   # with overr
 | `grpo.kl_estimator` | `exact` | `exact` (closed-form) or `k3` (TRL estimator) |
 | `distill.temperature` / `distill.alpha` | 2.0 / 0.5 | KD temperature / soft-vs-hard weight |
 | `distill.lambda_kd` | 1.0 | weight of the soft KD aux in `grpo_distill` |
+| `kdrl.estimator` | `k2` | KD-RKL estimator: `k2` / `k3` / `exact` (`kdrl`) |
+| `kdrl.beta` | 2e-3 | KD-RKL coefficient (constant schedule) |
+| `kdrl.schedule` | `constant` | `constant` or `anneal` (β: `beta_init`→`beta_min`) |
+| `kdrl.masking` | `none` | reward-guided masking: `none` / `response` / `group` |
+| `trrd.alpha` | 0.5 | mixture coefficient (1 = GRPO, 0 = teacher-anchored) (`trrd`) |
+| `trrd.distill_clip` | 1.0 | clamp on `log(π_θ/π_T)` |
 | `wandb.mode` | `online` | `online` / `offline` / `disabled` |
 
 Model selection and the final reported number use the MNLI **validation** split
@@ -85,7 +127,7 @@ Model selection and the final reported number use the MNLI **validation** split
 ## Tests
 
 ```bash
-uv run python -m pytest -q     # 30 CPU tests: data, models (incl. teacher permutation), KD, GRPO
+uv run python -m pytest -q     # 43 CPU tests: data, models (incl. teacher permutation), KD, GRPO, KDRL, TRRD
 ```
 
 ## Layout

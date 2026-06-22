@@ -1,0 +1,18 @@
+# @package _global_
+# KDRL (Xu et al., 2506.02208): GRPO + on-policy reverse-KL (k2) distillation toward the
+# teacher, combined via a joint loss. Faithful to the paper, the GRPO policy-anchoring KL
+# is OFF (grpo.beta=0) -- the KD-RKL toward roberta-large-mnli is the only divergence.
+algo: grpo
+method_name: kdrl
+distill:
+  enabled: false        # not the Hinton/forward-KD path
+grpo:
+  objective: grpo
+  reference: student
+  kd_aux: false
+  beta: 0.0             # no student-snapshot KL (the paper removes the GRPO KL constraint)
+kdrl:
+  enabled: true
+  estimator: k2
+  schedule: constant
+  masking: none

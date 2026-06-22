@@ -26,6 +26,7 @@ from transformers import get_linear_schedule_with_warmup
 
 from distill_rl.data.mnli import load_split, make_dataloader, maybe_subset, tokenize_split
 from distill_rl.distillation.losses import distillation_loss
+from distill_rl.grpo.kdrl import resolve_anneal_delta
 from distill_rl.models.reference import build_reference
 from distill_rl.models.student import load_student
 from distill_rl.models.teacher import load_teacher
@@ -81,9 +82,12 @@ def main(cfg: DictConfig) -> None:
     distill_on = bool(cfg.distill.enabled)
     grpo_ref = str(cfg.grpo.reference)
     grpo_kd_aux = bool(cfg.grpo.kd_aux)
+    grpo_objective = str(cfg.grpo.objective)   # grpo | trrd
+    kdrl_on = bool(cfg.kdrl.enabled)
     log.info(
-        f"method={cfg.method_name} algo={algo} distill={distill_on} "
-        f"grpo.reference={grpo_ref} grpo.kd_aux={grpo_kd_aux} device={device} run_dir={run_dir}"
+        f"method={cfg.method_name} algo={algo} objective={grpo_objective} distill={distill_on} "
+        f"kdrl={kdrl_on} grpo.reference={grpo_ref} grpo.kd_aux={grpo_kd_aux} grpo.beta={cfg.grpo.beta} "
+        f"device={device} run_dir={run_dir}"
     )
 
     logger = WandbLogger(
@@ -96,7 +100,11 @@ def main(cfg: DictConfig) -> None:
     # ----- models -----
     student, tokenizer = load_student(OmegaConf.to_container(cfg.student, resolve=True), device=str(device))
 
-    teacher_needed = distill_on or (algo == "grpo" and grpo_ref == "teacher") or grpo_kd_aux
+    teacher_needed = (
+        distill_on
+        or grpo_kd_aux
+        or (algo == "grpo" and (grpo_ref == "teacher" or grpo_objective == "trrd" or kdrl_on))
+    )
     teacher = None
     if teacher_needed:
         teacher, _ = load_teacher(OmegaConf.to_container(cfg.teacher, resolve=True), device=str(device))
@@ -150,16 +158,38 @@ def main(cfg: DictConfig) -> None:
             compute_loss = make_ce_loss()
         train_supervised(compute_loss=compute_loss, **common)
     elif algo == "grpo":
-        reference = build_reference(grpo_ref, student=student, teacher=teacher)
-        kd_teacher = teacher if grpo_kd_aux else None
+        # The reference is only needed when the ref-KL actually contributes (beta > 0);
+        # KDRL runs with beta=0, so we skip building a frozen student snapshot for it.
+        beta = float(cfg.grpo.beta)
+        reference = build_reference(grpo_ref, student=student, teacher=teacher) if beta > 0 else None
         kd_cfg = {"temperature": float(cfg.distill.temperature), "lambda_kd": float(cfg.distill.lambda_kd)}
+        trrd_cfg = OmegaConf.to_container(cfg.trrd, resolve=True) if grpo_objective == "trrd" else None
+
+        kd_rkl_cfg = None
+        if kdrl_on:
+            kd_rkl_cfg = OmegaConf.to_container(cfg.kdrl, resolve=True)
+            if str(kd_rkl_cfg.get("schedule")) == "anneal":
+                kd_rkl_cfg["delta"] = resolve_anneal_delta(
+                    beta_init=float(kd_rkl_cfg["beta_init"]),
+                    beta_min=float(kd_rkl_cfg["beta_min"]),
+                    anneal_frac=float(kd_rkl_cfg["anneal_frac"]),
+                    total_steps=total_optim_steps,
+                    delta=kd_rkl_cfg.get("delta"),
+                )
+                log.info(f"[kdrl] anneal delta resolved to {kd_rkl_cfg['delta']:.3e} "
+                         f"(reaches beta_min at ~{kd_rkl_cfg['anneal_frac']*total_optim_steps:.0f} steps)")
+
         common.pop("model")
         train_grpo(
             student=student,
             reference=reference,
             grpo_cfg=OmegaConf.to_container(cfg.grpo, resolve=True),
-            kd_teacher=kd_teacher,
+            teacher=teacher,
+            kd_aux=grpo_kd_aux,
             kd_cfg=kd_cfg,
+            objective=grpo_objective,
+            trrd_cfg=trrd_cfg,
+            kd_rkl_cfg=kd_rkl_cfg,
             **common,
         )
     else:

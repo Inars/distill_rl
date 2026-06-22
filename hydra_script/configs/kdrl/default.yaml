@@ -1,0 +1,15 @@
+# KDRL: on-policy reverse-KL (KD-RKL) distillation added to GRPO via a joint loss.
+# Inert unless `enabled: true` (set by the kdrl / kdrl_anneal method presets).
+enabled: false
+estimator: k2           # k2 (unbiased grad, paper default) | k3 | exact (closed-form 3-class RKL)
+masking: none           # none | response (drop KD on correct samples) | group (KD only on fully-hard examples)
+schedule: constant      # constant | anneal (linearly decayed KD coefficient)
+
+# Constant schedule:
+beta: 2.0e-3            # KD-RKL coefficient
+
+# Anneal schedule (beta = max(beta_init - delta*step, beta_min)):
+beta_init: 5.0e-3      # starting coefficient
+beta_min: 1.0e-3       # floor
+anneal_frac: 0.5       # reach beta_min at this fraction of total optimizer steps
+delta: null            # explicit decay rate; null -> auto-computed from anneal_frac

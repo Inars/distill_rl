@@ -1,0 +1,16 @@
+# @package _global_
+# TRRD / RLAD (Zhang et al., 2602.22495): GRPO with the importance ratio anchored on a
+# teacher (+) old-policy geometric mixture. No separate KD term -- distillation is folded
+# into the trust region. Keeps the Eq. 4 reference-KL to a frozen student snapshot (grpo.beta).
+algo: grpo
+method_name: trrd
+distill:
+  enabled: false
+grpo:
+  objective: trrd
+  reference: student
+  kd_aux: false
+  beta: 0.04            # Eq. 4 reference-KL weight (to the frozen student snapshot)
+trrd:
+  alpha: 0.5
+  distill_clip: 1.0

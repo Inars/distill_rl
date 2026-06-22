@@ -1,0 +1,5 @@
+# TRRD / RLAD: GRPO with the importance ratio anchored on a teacher (+) old-policy mixture.
+# Active when `grpo.objective: trrd` (set by the trrd method preset); these knobs are read then.
+# The reference-KL term is controlled by `grpo.beta` / `grpo.reference` (Eq. 4), not here.
+alpha: 0.5             # mixing coefficient: 1 -> standard GRPO, 0 -> teacher-anchored (DPO-like)
+distill_clip: 1.0      # Appendix-B clamp on log(pi_theta / pi_T), in [-distill_clip, +distill_clip]
